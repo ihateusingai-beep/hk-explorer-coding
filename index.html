@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0a1630" />
+  <title>香港小探險家的編碼旅程｜將軍澳培智學校</title>
+  <style>
+    :root {
+      --ink: #f4f8ff;
+      --muted: #a8c0e8;
+      --gold: #ffd76a;
+      --ok: #3ddc97;
+      --bad: #ff7a8a;
+      --path: #1e3a6e;
+      --path-edge: #3d6ab8;
+      --wall: #0b1224;
+      --fwd: #3b82f6;
+      --left: #a855f7;
+      --right: #22c55e;
+      --go: #f59e0b;
+      --touch: 76px;
+      --r: 18px;
+      --shadow: 0 10px 28px rgba(0,0,0,.4);
+      --step-ms: 420;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; height: 100%;
+      font-family: "PingFang HK", "Noto Sans TC", "Helvetica Neue", system-ui, sans-serif;
+      color: var(--ink);
+      background: #070e1c;
+      overflow: hidden;
+      touch-action: manipulation;
+      user-select: none; -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    body {
+      background:
+        radial-gradient(ellipse 70% 45% at 80% -5%, #2a4a8a 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 10% 100%, #1a3058 0%, transparent 50%),
+        linear-gradient(165deg, #0f1a32 0%, #070e1c 55%, #050a14 100%);
+    }
+    body::before {
+      content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .4; z-index: 0;
+      background-image:
+        radial-gradient(1.5px 1.5px at 8% 18%, #fff 50%, transparent 51%),
+        radial-gradient(2px 2px at 22% 42%, #fff 50%, transparent 51%),
+        radial-gradient(1px 1px at 48% 12%, #fff 50%, transparent 51%),
+        radial-gradient(2px 2px at 70% 28%, #fff 50%, transparent 51%),
+        radial-gradient(1.5px 1.5px at 88% 55%, #fff 50%, transparent 51%),
+        radial-gradient(1px 1px at 35% 78%, #fff 50%, transparent 51%),
+        radial-gradient(2px 2px at 60% 88%, #fff 50%, transparent 51%);
+    }
+    #app {
+      position: relative; z-index: 1;
+      height: 100dvh; max-width: 1100px; margin: 0 auto;
+      padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0));
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .screen { display: none; flex: 1; flex-direction: column; min-height: 0; }
+    .screen.on { display: flex; }
+
+    /* —— HOME —— */
+    .school-bar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 8px; flex-shrink: 0;
+      background: rgba(255,255,255,.06); border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.1);
+    }
+    .school-logo {
+      width: 40px; height: 40px; border-radius: 10px; object-fit: contain;
+      background: #fff; flex-shrink: 0;
+    }
+    .school-name { font-weight: 800; font-size: .95rem; letter-spacing: .02em; }
+    .school-sub { color: var(--muted); font-size: .78rem; font-weight: 600; margin-top: 1px; }
+
+    .home-hero { text-align: center; padding: 8px 0 4px; flex-shrink: 0; }
+    .hero-icon {
+      width: 88px; height: 88px; margin: 0 auto 8px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #7eb6ff, #1e4a9a 60%, #0c2348);
+      box-shadow: 0 0 0 6px rgba(90,150,255,.15), 0 0 40px rgba(60,120,255,.45);
+      display: grid; place-items: center; font-size: 2.4rem;
+      animation: pulseGlow 3s ease-in-out infinite;
+    }
+    @keyframes pulseGlow {
+      0%,100% { box-shadow: 0 0 0 6px rgba(90,150,255,.12), 0 0 36px rgba(60,120,255,.4); }
+      50% { box-shadow: 0 0 0 10px rgba(90,150,255,.2), 0 0 52px rgba(60,120,255,.6); }
+    }
+    h1 { margin: 0; font-size: clamp(1.35rem, 4vw, 1.85rem); font-weight: 900; }
+    .sub { margin: 6px 0 0; color: var(--muted); font-size: .98rem; font-weight: 600; }
+
+    .char-grid {
+      flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+      padding: 6px 2px 10px;
+    }
+    .char-card {
+      border: 0; border-radius: 22px; cursor: pointer;
+      background: linear-gradient(160deg, rgba(40,70,130,.55), rgba(15,30,60,.85));
+      box-shadow: var(--shadow); color: var(--ink);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 10px; padding: 16px 10px; min-height: 160px;
+      border: 2px solid rgba(255,255,255,.12);
+      transition: transform .12s ease, border-color .12s;
+    }
+    .char-card:active { transform: scale(.97); }
+    .char-card .art { width: min(42vw, 140px); height: min(42vw, 140px); }
+    .char-card .art svg { width: 100%; height: 100%; display: block; }
+    .char-card .name { font-size: 1.35rem; font-weight: 900; }
+    .char-card .tag { color: var(--muted); font-size: .9rem; font-weight: 600; }
+    .char-card.ming { border-color: rgba(96,165,250,.45); }
+    .char-card.lok { border-color: rgba(244,114,182,.45); }
+    .home-tip { text-align: center; color: var(--muted); font-weight: 700; font-size: .9rem; flex-shrink: 0; }
+
+    /* —— PLAY BAR —— */
+    .bar {
+      display: flex; align-items: center; gap: 6px; flex-shrink: 0; flex-wrap: wrap;
+      padding: 4px 2px;
+    }
+    .bar .school-logo { width: 32px; height: 32px; border-radius: 8px; }
+    .bar .school-mini { font-weight: 800; font-size: .78rem; white-space: nowrap; }
+    .pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .pill {
+      background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14);
+      border-radius: 999px; padding: 5px 10px; font-weight: 800; font-size: .82rem;
+    }
+    .pill.stars { color: var(--gold); letter-spacing: 1px; }
+    .spacer { flex: 1; min-width: 4px; }
+    .icon-btn {
+      width: 44px; height: 44px; border-radius: 12px; border: 0; cursor: pointer;
+      background: rgba(255,255,255,.12); color: var(--ink); font-size: 1.15rem;
+      font-weight: 800; display: grid; place-items: center;
+    }
+    .icon-btn.on { background: rgba(59,130,246,.45); box-shadow: 0 0 0 2px rgba(147,197,253,.5); }
+    .icon-btn:active { transform: scale(.95); }
+
+    .teacher {
+      display: none; flex-wrap: wrap; gap: 8px; align-items: center;
+      background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.15);
+      border-radius: 14px; padding: 10px; margin-bottom: 4px; flex-shrink: 0;
+    }
+    .teacher.open { display: flex; }
+    .teacher strong { width: 100%; }
+    .teacher label { font-size: .8rem; color: var(--muted); font-weight: 700; }
+    .teacher select, .teacher button {
+      border-radius: 10px; border: 0; padding: 8px 10px; font-weight: 800;
+      font-size: .9rem; background: rgba(255,255,255,.12); color: var(--ink);
+    }
+    .teacher button { cursor: pointer; background: #3b82f6; }
+
+    .play-main {
+      flex: 1; min-height: 0; display: grid;
+      grid-template-rows: minmax(160px, 1fr) auto auto;
+      gap: 8px;
+    }
+    @media (min-width: 900px) {
+      .play-main {
+        grid-template-columns: 1.15fr .85fr;
+        grid-template-rows: 1fr auto;
+      }
+      .board-wrap { grid-row: 1 / 3; }
+      .side-panel { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+      .program-box { flex: 1; }
+    }
+
+    .board-wrap {
+      position: relative; border-radius: 20px; overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(20,50,100,.35), rgba(8,16,36,.7)),
+        linear-gradient(90deg, #0a1a38, #122850 50%, #0a1a38);
+      border: 1px solid rgba(120,170,255,.2);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 0; padding: 10px;
+    }
+    .grid {
+      display: grid; gap: 5px; width: min(92vw, 520px); z-index: 1;
+    }
+    .cell {
+      aspect-ratio: 1; border-radius: 10px; position: relative;
+      background: var(--path);
+      border: 1.5px solid var(--path-edge);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+    }
+    .cell.wall {
+      background: repeating-linear-gradient(45deg, #0a1020, #0a1020 4px, #121a30 4px, #121a30 8px);
+      border-color: #1a2438; opacity: .85;
+    }
+    .cell.goal {
+      background: linear-gradient(145deg, #1a5c4a, #0f3d32);
+      border-color: #3ddc97;
+      box-shadow: 0 0 16px rgba(61,220,151,.35), inset 0 0 12px rgba(61,220,151,.15);
+    }
+    .cell.goal-glow { animation: goalPulse 1.4s ease-in-out infinite; }
+    @keyframes goalPulse {
+      0%,100% { box-shadow: 0 0 12px rgba(61,220,151,.3); }
+      50% { box-shadow: 0 0 22px rgba(61,220,151,.55); }
+    }
+    .cell.visited { background: #274a8a; }
+    .cell .actor {
+      position: absolute; inset: 6%; display: grid; place-items: center;
+      transition: transform .18s ease;
+      filter: drop-shadow(0 3px 4px rgba(0,0,0,.35));
+      z-index: 2;
+    }
+    .cell .actor svg { width: 100%; height: 100%; display: block; }
+    .cell .actor.walk { animation: bob .28s ease; }
+    .cell .actor.win { animation: celebrate .55s ease; }
+    .cell .actor.stuck { animation: shake .4s ease; }
+    .cell .actor.idle { animation: breathe 2.4s ease-in-out infinite; }
+    @keyframes bob {
+      0% { transform: translateY(0) scale(1); }
+      40% { transform: translateY(-10%) scale(1.05); }
+      100% { transform: translateY(0) scale(1); }
+    }
+    @keyframes celebrate {
+      0%,100% { transform: translateY(0) scale(1); }
+      30% { transform: translateY(-18%) scale(1.12); }
+      60% { transform: translateY(-4%) rotate(-8deg) scale(1.05); }
+    }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25% { transform: translateX(-8%); }
+      75% { transform: translateX(8%); }
+    }
+    @keyframes breathe {
+      0%,100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+    .goal-flag {
+      position: absolute; inset: 12%; display: grid; place-items: center;
+      font-size: clamp(1rem, 4vw, 1.5rem); z-index: 1; pointer-events: none;
+    }
+    .coach {
+      margin-top: 8px; text-align: center; font-weight: 800; font-size: .92rem;
+      color: var(--gold); min-height: 1.2em; z-index: 1;
+      text-shadow: 0 2px 8px rgba(0,0,0,.5);
+    }
+
+    .overlay {
+      position: absolute; inset: 0; display: none; place-items: center;
+      background: rgba(4,10,24,.72); z-index: 5; padding: 16px;
+    }
+    .overlay.on { display: grid; }
+    .modal {
+      background: linear-gradient(165deg, #1a2f5c, #0e1a34);
+      border: 2px solid rgba(255,215,106,.35);
+      border-radius: 22px; padding: 22px 18px; text-align: center;
+      width: min(92vw, 360px); box-shadow: var(--shadow);
+      animation: popIn .28s ease;
+    }
+    @keyframes popIn {
+      from { transform: scale(.88); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .modal .stars { font-size: 2rem; color: var(--gold); letter-spacing: 4px; margin-bottom: 6px; }
+    .modal h2 { margin: 0 0 6px; font-size: 1.5rem; }
+    .modal p { margin: 0 0 14px; color: var(--muted); font-weight: 700; }
+    .modal .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .modal button {
+      border: 0; border-radius: 14px; padding: 12px 18px; font-weight: 900;
+      font-size: 1rem; cursor: pointer; min-width: 110px; min-height: 48px;
+    }
+    .m-ok { background: var(--go); color: #1a1200; }
+    .m-retry { background: var(--fwd); color: #fff; }
+    .m-home { background: rgba(255,255,255,.12); color: var(--ink); }
+
+    .program-box {
+      background: rgba(0,0,0,.28); border-radius: 16px; padding: 10px;
+      border: 1px solid rgba(255,255,255,.1); min-height: 72px;
+    }
+    .program-head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 6px; font-weight: 800; font-size: .85rem;
+    }
+    .program-label { color: var(--muted); }
+    .step-count { color: var(--gold); }
+    .program-row {
+      display: flex; flex-wrap: wrap; gap: 6px; min-height: 44px; align-items: center;
+    }
+    .chip {
+      border: 0; border-radius: 12px; padding: 8px 12px; font-weight: 900;
+      font-size: .9rem; color: #fff; cursor: pointer; min-height: 40px;
+      box-shadow: 0 3px 0 rgba(0,0,0,.25);
+    }
+    .chip.F { background: var(--fwd); }
+    .chip.L { background: var(--left); }
+    .chip.R { background: var(--right); }
+    .chip.run { outline: 3px solid var(--gold); outline-offset: 1px; transform: scale(1.06); }
+    .chip-empty { color: var(--muted); font-weight: 700; font-size: .88rem; padding: 6px; }
+
+    .controls {
+      display: grid; grid-template-columns: 1fr 1fr 1fr 1.15fr auto; gap: 8px; flex-shrink: 0;
+    }
+    .big-btn {
+      border: 0; border-radius: 18px; min-height: var(--touch); cursor: pointer;
+      color: #fff; font-weight: 900; font-size: 1.05rem;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      box-shadow: 0 5px 0 rgba(0,0,0,.28), var(--shadow);
+    }
+    .big-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,.28); }
+    .big-btn:disabled { opacity: .45; pointer-events: none; }
+    .big-btn .glyph { font-size: 1.25rem; line-height: 1; }
+    .btn-f { background: linear-gradient(180deg, #60a5fa, #2563eb); }
+    .btn-l { background: linear-gradient(180deg, #c084fc, #7e22ce); }
+    .btn-r { background: linear-gradient(180deg, #4ade80, #16a34a); }
+    .btn-go { background: linear-gradient(180deg, #fbbf24, #d97706); color: #1a1200; }
+    .btn-clear {
+      background: rgba(255,255,255,.12); min-width: 64px; border-radius: 18px;
+      border: 0; color: var(--ink); font-weight: 900; cursor: pointer; min-height: var(--touch);
+    }
+    @media (max-width: 420px) {
+      .controls { grid-template-columns: 1fr 1fr 1fr; }
+      .btn-go { grid-column: 1 / 3; }
+      .btn-clear { grid-column: 3; }
+    }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(120%);
+      background: rgba(10,20,40,.92); color: var(--ink); padding: 12px 18px;
+      border-radius: 14px; font-weight: 800; z-index: 20; opacity: 0;
+      transition: .25s ease; border: 1px solid rgba(255,255,255,.15);
+      pointer-events: none; max-width: 90vw; text-align: center;
+    }
+    .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hero-icon, .cell.goal-glow, .cell .actor.idle, .modal { animation: none !important; }
+    }
+    body.reduce-motion .hero-icon,
+    body.reduce-motion .cell.goal-glow,
+    body.reduce-motion .cell .actor.idle { animation: none !important; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <section id="screen-home" class="screen on">
+      <div class="school-bar">
+        <img class="school-logo" src="https://www.puichi.edu.hk/it-school/php/webcms/files/upload/tinymce//1a__pui_chi_logo_png_1791177564.png" alt="將軍澳培智學校" />
+        <div>
+          <div class="school-name">將軍澳培智學校</div>
+          <div class="school-sub">電腦科 · 編碼探險</div>
+        </div>
+      </div>
+      <div class="home-hero">
+        <div class="hero-icon" aria-hidden="true">🌃</div>
+        <h1>香港小探險家的編碼旅程</h1>
+        <p class="sub">Stage 1 · 維港夜景 · 學「前／左／右」</p>
+      </div>
+      <div class="char-grid">
+        <button type="button" class="char-card ming" data-char="ming" aria-label="選明仔">
+          <div class="art" id="home-ming"></div>
+          <div class="name">明仔</div>
+          <div class="tag">戴帽 · 背包</div>
+        </button>
+        <button type="button" class="char-card lok" data-char="lok" aria-label="選樂樂">
+          <div class="art" id="home-lok"></div>
+          <div class="name">樂樂</div>
+          <div class="tag">雙辮 · 背包</div>
+        </button>
+      </div>
+      <p class="home-tip">① 揀角色　② 組程式　③ 走去旗幟</p>
+    </section>
+
+    <section id="screen-play" class="screen">
+      <div class="bar">
+        <img class="school-logo" src="https://www.puichi.edu.hk/it-school/php/webcms/files/upload/tinymce//1a__pui_chi_logo_png_1791177564.png" alt="" />
+        <span class="school-mini">將軍澳培智學校</span>
+        <div class="pills">
+          <span class="pill" id="level-pill">關 1/8</span>
+          <span class="pill stars" id="star-pill">☆☆☆</span>
+        </div>
+        <div class="spacer"></div>
+        <button type="button" class="icon-btn on" id="btn-voice" title="語音" aria-label="語音">🔊</button>
+        <button type="button" class="icon-btn" id="btn-slow" title="慢速" aria-label="慢速">🐢</button>
+        <button type="button" class="icon-btn" id="btn-home" title="主頁" aria-label="主頁">🏠</button>
+        <button type="button" class="icon-btn" id="btn-teacher" title="老師" aria-label="老師設定">⚙</button>
+      </div>
+
+      <div class="teacher" id="teacher-panel">
+        <strong>老師角</strong>
+        <label>跳關</label>
+        <select id="t-level"></select>
+        <label>語音</label>
+        <select id="t-voice"><option value="1">開</option><option value="0">關</option></select>
+        <label>音效</label>
+        <select id="t-sfx"><option value="1">開</option><option value="0">關</option></select>
+        <label>慢速</label>
+        <select id="t-slow"><option value="0">正常</option><option value="1">慢</option></select>
+        <button type="button" id="t-reset">重設本關</button>
+        <button type="button" id="t-close">關閉</button>
+      </div>
+
+      <div class="play-main">
+        <div class="board-wrap" id="board-wrap">
+          <div class="grid" id="grid" role="grid" aria-label="地圖"></div>
+          <div class="coach" id="coach"></div>
+
+          <div class="overlay" id="overlay-win">
+            <div class="modal">
+              <div class="stars" id="win-stars">★★★</div>
+              <h2 id="win-title">成功！</h2>
+              <p id="win-msg">到達維港旗幟啦</p>
+              <div class="row">
+                <button type="button" class="m-ok" id="btn-next">下一關</button>
+                <button type="button" class="m-home" id="btn-win-home">主頁</button>
+              </div>
+            </div>
+          </div>
+          <div class="overlay" id="overlay-fail">
+            <div class="modal">
+              <h2>未成功</h2>
+              <p id="fail-msg">唔緊要，再試一次</p>
+              <div class="row">
+                <button type="button" class="m-retry" id="btn-retry">再試</button>
+                <button type="button" class="m-home" id="btn-fail-clear">清空重來</button>
+              </div>
+            </div>
+          </div>
+          <div class="overlay" id="overlay-done">
+            <div class="modal">
+              <div class="stars">🌃✨</div>
+              <h2>維港完成！</h2>
+              <p id="done-msg">Stage 1 序列全部通過</p>
+              <div class="row">
+                <button type="button" class="m-ok" id="btn-again">再玩</button>
+                <button type="button" class="m-home" id="btn-done-home">主頁</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="side-panel">
+          <div class="program-box">
+            <div class="program-head">
+              <span class="program-label">我嘅程式</span>
+              <span class="step-count" id="step-count">0 步</span>
+            </div>
+            <div class="program-row" id="program-row"></div>
+          </div>
+
+          <div class="controls" id="controls">
+            <button type="button" class="big-btn btn-f" id="btn-f"><span class="glyph">▲</span><span>向前</span></button>
+            <button type="button" class="big-btn btn-l" id="btn-l"><span class="glyph">↺</span><span>左轉</span></button>
+            <button type="button" class="big-btn btn-r" id="btn-r"><span class="glyph">↻</span><span>右轉</span></button>
+            <button type="button" class="big-btn btn-go" id="btn-go"><span class="glyph">▶</span><span>走</span></button>
+            <button type="button" class="btn-clear" id="btn-clear">清空</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    var SCHOOL_LOGO = 'https://www.puichi.edu.hk/it-school/php/webcms/files/upload/tinymce//1a__pui_chi_logo_png_1791177564.png';
+    var STORAGE_KEY = 'hk-explorer-coding-v1';
+    var MAX_STEPS = 24;
+    var DIR_DELTA = [
+      { r: -1, c: 0 }, // N
+      { r: 0, c: 1 },  // E
+      { r: 1, c: 0 },  // S
+      { r: 0, c: -1 }  // W
+    ];
+    var DIR_ROT = [0, 90, 180, 270];
+
+    // walls as "r,c" strings
+    var LEVELS = [
+      {
+        id: 'vh-01', name: '維港起步',
+        cols: 5, rows: 1,
+        start: { r: 0, c: 0, dir: 1 },
+        goal: { r: 0, c: 4 },
+        walls: [],
+        optimal: 4,
+        coach: '撳藍色「向前」，再撳「走」！'
+      },
+      {
+        id: 'vh-02', name: '海傍直路',
+        cols: 7, rows: 1,
+        start: { r: 0, c: 0, dir: 1 },
+        goal: { r: 0, c: 6 },
+        walls: [],
+        optimal: 6,
+        coach: '向前多幾步，送到旗幟'
+      },
+      {
+        id: 'vh-03', name: '右轉去碼頭',
+        cols: 4, rows: 4,
+        start: { r: 3, c: 0, dir: 0 },
+        goal: { r: 0, c: 3 },
+        walls: [],
+        optimal: 7, // FFF R FFF
+        coach: '向前 → 右轉 → 再向前'
+      },
+      {
+        id: 'vh-04', name: '左轉看夜景',
+        cols: 4, rows: 4,
+        start: { r: 3, c: 3, dir: 0 },
+        goal: { r: 0, c: 0 },
+        walls: [],
+        optimal: 7, // FFF L FFF
+        coach: '向前 → 左轉 → 再向前'
+      },
+      {
+        id: 'vh-05', name: '之字小路',
+        cols: 5, rows: 3,
+        start: { r: 2, c: 0, dir: 1 },
+        goal: { r: 0, c: 4 },
+        walls: [],
+        optimal: 8, // FF L FF R FF  or FF L F F R F F
+        // path: (2,0)->(2,1)->(2,2) L face N ->(1,2)->(0,2) R face E ->(0,3)->(0,4)
+        coach: '轉兩次：左再右'
+      },
+      {
+        id: 'vh-06', name: '繞過檔口',
+        cols: 5, rows: 5,
+        start: { r: 4, c: 0, dir: 0 },
+        goal: { r: 0, c: 4 },
+        walls: ['1,1','1,2','1,3','2,1','2,3','3,1','3,2','3,3'],
+        optimal: 10, // corridor around: up left side then across top
+        // (4,0)N F->(3,0) F->(2,0) F->(1,0) F->(0,0) R F->(0,1) F(0,2) F(0,3) F(0,4) = 4F+R+4F = 9
+        coach: '有牆擋住，慢慢繞'
+      },
+      {
+        id: 'vh-07', name: '長路探險',
+        cols: 6, rows: 6,
+        start: { r: 5, c: 0, dir: 0 },
+        goal: { r: 0, c: 5 },
+        walls: ['2,1','2,2','2,3','3,3','4,3','4,2'],
+        optimal: 12,
+        coach: '想清楚再撳走'
+      },
+      {
+        id: 'vh-08', name: '維港精簡挑戰',
+        cols: 6, rows: 1,
+        start: { r: 0, c: 0, dir: 1 },
+        goal: { r: 0, c: 5 },
+        walls: [],
+        optimal: 5,
+        coach: '用最少步數到終點（5 步向前）'
+      }
+    ];
+
+    var CHARS = {
+      ming: { name: '明仔', win: '明仔到達旗幟啦！' },
+      lok: { name: '樂樂', win: '樂樂到達旗幟啦！' }
+    };
+
+    var state = {
+      char: 'ming',
+      levelIdx: 0,
+      r: 0, c: 0, dir: 1,
+      program: [],
+      running: false,
+      voice: true,
+      sfx: true,
+      slow: false,
+      starsEarned: {}, // id -> 1..3
+      status: 'play'
+    };
+
+    var $ = function (id) { return document.getElementById(id); };
+    var gridEl = $('grid');
+    var programRow = $('program-row');
+
+    /* —— SVG characters (original geometric) —— */
+    function svgMing() {
+      return '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+        '<ellipse cx="40" cy="70" rx="16" ry="6" fill="rgba(0,0,0,.2)"/>' +
+        '<rect x="28" y="44" width="24" height="22" rx="8" fill="#3b82f6"/>' +
+        '<rect x="22" y="48" width="10" height="14" rx="4" fill="#f6c29a"/>' +
+        '<rect x="48" y="48" width="10" height="14" rx="4" fill="#f6c29a"/>' +
+        '<circle cx="40" cy="30" r="16" fill="#f6c29a"/>' +
+        '<path d="M20 22 h40 v10 h-10 v6 h-20 v-6 h-10 z" fill="#1d4ed8"/>' +
+        '<rect x="30" y="14" width="20" height="10" rx="3" fill="#1e40af"/>' +
+        '<circle cx="34" cy="30" r="2.5" fill="#1a1a2e"/>' +
+        '<circle cx="46" cy="30" r="2.5" fill="#1a1a2e"/>' +
+        '<path d="M34 37 q6 4 12 0" stroke="#c05621" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+        '<rect x="50" y="46" width="12" height="14" rx="3" fill="#b45309"/>' +
+        '<rect x="30" y="64" width="8" height="10" rx="3" fill="#1e3a5f"/>' +
+        '<rect x="42" y="64" width="8" height="10" rx="3" fill="#1e3a5f"/>' +
+        '</svg>';
+    }
+    function svgLok() {
+      return '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+        '<ellipse cx="40" cy="70" rx="16" ry="6" fill="rgba(0,0,0,.2)"/>' +
+        '<rect x="28" y="44" width="24" height="22" rx="8" fill="#ec4899"/>' +
+        '<rect x="22" y="48" width="10" height="14" rx="4" fill="#f6c29a"/>' +
+        '<rect x="48" y="48" width="10" height="14" rx="4" fill="#f6c29a"/>' +
+        '<circle cx="40" cy="30" r="16" fill="#f6c29a"/>' +
+        '<path d="M24 18 q16 -14 32 0" fill="#7c3aed"/>' +
+        '<circle cx="22" cy="28" r="5" fill="#7c3aed"/>' +
+        '<circle cx="58" cy="28" r="5" fill="#7c3aed"/>' +
+        '<circle cx="34" cy="30" r="2.5" fill="#1a1a2e"/>' +
+        '<circle cx="46" cy="30" r="2.5" fill="#1a1a2e"/>' +
+        '<path d="M34 37 q6 4 12 0" stroke="#c05621" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+        '<rect x="50" y="46" width="12" height="14" rx="3" fill="#db2777"/>' +
+        '<rect x="30" y="64" width="8" height="10" rx="3" fill="#4c1d95"/>' +
+        '<rect x="42" y="64" width="8" height="10" rx="3" fill="#4c1d95"/>' +
+        '</svg>';
+    }
+    function characterSVG(ch) {
+      return ch === 'lok' ? svgLok() : svgMing();
+    }
+
+    $('home-ming').innerHTML = svgMing();
+    $('home-lok').innerHTML = svgLok();
+
+    /* —— SFX —— */
+    var audioCtx = null;
+    function ensureAudio() {
+      if (!audioCtx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) audioCtx = new AC();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+    function beep(freq, dur, type, vol, when) {
+      if (!state.sfx) return;
+      var ctx = ensureAudio();
+      if (!ctx) return;
+      var t0 = ctx.currentTime + (when || 0);
+      var o = ctx.createOscillator();
+      var g = ctx.createGain();
+      o.type = type || 'sine';
+      o.frequency.setValueAtTime(freq, t0);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol || 0.08, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + (dur || 0.12));
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t0); o.stop(t0 + (dur || 0.12) + 0.02);
+    }
+    function sfxStep() { beep(520, 0.07, 'square', 0.05); }
+    function sfxWin() {
+      beep(523, 0.1, 'sine', 0.08, 0);
+      beep(659, 0.1, 'sine', 0.08, 0.1);
+      beep(784, 0.18, 'sine', 0.1, 0.2);
+    }
+    function sfxFail() { beep(200, 0.15, 'triangle', 0.07); beep(150, 0.2, 'triangle', 0.06, 0.12); }
+    function sfxTap() { beep(660, 0.05, 'square', 0.04); }
+
+    function speak(text) {
+      if (!state.voice || !text) return;
+      try {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance(text);
+        u.lang = 'zh-HK';
+        u.rate = 0.95;
+        window.speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+
+    function toast(msg) {
+      var el = $('toast');
+      el.textContent = msg;
+      el.classList.add('on');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(function () { el.classList.remove('on'); }, 1800);
+    }
+
+    /* —— storage —— */
+    function loadStore() {
+      try {
+        var raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        var d = JSON.parse(raw);
+        if (d.char) state.char = d.char;
+        if (typeof d.voice === 'boolean') state.voice = d.voice;
+        if (typeof d.sfx === 'boolean') state.sfx = d.sfx;
+        if (typeof d.slow === 'boolean') state.slow = d.slow;
+        if (d.starsEarned) state.starsEarned = d.starsEarned;
+        if (typeof d.levelIdx === 'number') state.levelIdx = Math.max(0, Math.min(LEVELS.length - 1, d.levelIdx));
+      } catch (e) {}
+    }
+    function saveStore() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          char: state.char,
+          voice: state.voice,
+          sfx: state.sfx,
+          slow: state.slow,
+          starsEarned: state.starsEarned,
+          levelIdx: state.levelIdx
+        }));
+      } catch (e) {}
+    }
+
+    function stepMs() { return state.slow ? 780 : 420; }
+
+    function showScreen(id) {
+      var screens = document.querySelectorAll('.screen');
+      for (var i = 0; i < screens.length; i++) screens[i].classList.remove('on');
+      var el = $(id);
+      if (el) el.classList.add('on');
+    }
+
+    function wallSet(level) {
+      var s = {};
+      var w = level.walls || [];
+      for (var i = 0; i < w.length; i++) s[w[i]] = true;
+      return s;
+    }
+    function inBounds(level, r, c) {
+      return r >= 0 && c >= 0 && r < level.rows && c < level.cols;
+    }
+    function isWall(level, r, c) {
+      return !!wallSet(level)[r + ',' + c];
+    }
+    function isGoal(level, r, c) {
+      return level.goal.r === r && level.goal.c === c;
+    }
+
+    /** Pure sim: cmds array of 'F'|'L'|'R' → 'win'|'fail'|'miss' */
+    function simulate(level, startState, cmds) {
+      var r = startState.r, c = startState.c, dir = startState.dir;
+      for (var i = 0; i < cmds.length; i++) {
+        var op = cmds[i];
+        if (op === 'L') { dir = (dir + 3) % 4; continue; }
+        if (op === 'R') { dir = (dir + 1) % 4; continue; }
+        if (op === 'F') {
+          var d = DIR_DELTA[dir];
+          var nr = r + d.r, nc = c + d.c;
+          if (!inBounds(level, nr, nc) || isWall(level, nr, nc)) return 'fail';
+          r = nr; c = nc;
+        }
+      }
+      if (isGoal(level, r, c)) return 'win';
+      return 'miss';
+    }
+
+    function starCount(level, programLen) {
+      if (programLen <= level.optimal) return 3;
+      if (programLen <= level.optimal + 2) return 2;
+      return 1;
+    }
+
+    function getLevel() { return LEVELS[state.levelIdx]; }
+
+    function syncToggles() {
+      $('btn-voice').classList.toggle('on', state.voice);
+      $('btn-voice').textContent = state.voice ? '🔊' : '🔇';
+      $('btn-slow').classList.toggle('on', state.slow);
+      if (document.body && document.body.classList) {
+        document.body.classList.toggle('reduce-motion', state.slow);
+      }
+      $('t-voice').value = state.voice ? '1' : '0';
+      $('t-sfx').value = state.sfx ? '1' : '0';
+      $('t-slow').value = state.slow ? '1' : '0';
+    }
+
+    function fillTeacherLevels() {
+      var sel = $('t-level');
+      sel.innerHTML = '';
+      for (var i = 0; i < LEVELS.length; i++) {
+        var o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = (i + 1) + '. ' + LEVELS[i].name;
+        sel.appendChild(o);
+      }
+      sel.value = String(state.levelIdx);
+    }
+
+    function renderProgram() {
+      programRow.innerHTML = '';
+      if (!state.program.length) {
+        var empty = document.createElement('span');
+        empty.className = 'chip-empty';
+        empty.textContent = '撳下面掣加入指令';
+        programRow.appendChild(empty);
+      } else {
+        for (var i = 0; i < state.program.length; i++) {
+          (function (idx) {
+            var op = state.program[idx];
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'chip ' + op;
+            b.dataset.idx = String(idx);
+            b.textContent = op === 'F' ? '向前' : op === 'L' ? '左轉' : '右轉';
+            b.addEventListener('click', function () {
+              if (state.running) return;
+              state.program.splice(idx, 1);
+              sfxTap();
+              renderProgram();
+            });
+            programRow.appendChild(b);
+          })(i);
+        }
+      }
+      $('step-count').textContent = state.program.length + ' / ' + MAX_STEPS + ' 步';
+    }
+
+    function highlightChip(idx) {
+      var chips = programRow.querySelectorAll('.chip');
+      for (var i = 0; i < chips.length; i++) {
+        chips[i].classList.toggle('run', i === idx);
+      }
+    }
+
+    function renderGrid(animClass) {
+      var level = getLevel();
+      gridEl.style.gridTemplateColumns = 'repeat(' + level.cols + ', 1fr)';
+      gridEl.innerHTML = '';
+      var walls = wallSet(level);
+      for (var r = 0; r < level.rows; r++) {
+        for (var c = 0; c < level.cols; c++) {
+          var cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.setAttribute('role', 'gridcell');
+          var key = r + ',' + c;
+          if (walls[key]) cell.classList.add('wall');
+          if (isGoal(level, r, c)) {
+            cell.classList.add('goal', 'goal-glow');
+            var flag = document.createElement('div');
+            flag.className = 'goal-flag';
+            flag.textContent = '🚩';
+            cell.appendChild(flag);
+          }
+          if (r === state.r && c === state.c && !walls[key]) {
+            var actor = document.createElement('div');
+            actor.className = 'actor idle' + (animClass ? ' ' + animClass : '');
+            actor.style.transform = 'rotate(' + DIR_ROT[state.dir] + 'deg)';
+            actor.innerHTML = characterSVG(state.char);
+            cell.appendChild(actor);
+          }
+          gridEl.appendChild(cell);
+        }
+      }
+    }
+
+    function updatePills() {
+      var level = getLevel();
+      $('level-pill').textContent = '關 ' + (state.levelIdx + 1) + '/' + LEVELS.length;
+      var best = state.starsEarned[level.id] || 0;
+      $('star-pill').textContent = '★'.repeat(best) + '☆'.repeat(3 - best);
+      $('coach').textContent = level.coach || '';
+    }
+
+    function setRunningUI(on) {
+      state.running = on;
+      var ids = ['btn-f', 'btn-l', 'btn-r', 'btn-go', 'btn-clear'];
+      for (var i = 0; i < ids.length; i++) {
+        var el = $(ids[i]);
+        if (el) el.disabled = on;
+      }
+    }
+
+    function hideOverlays() {
+      $('overlay-win').classList.remove('on');
+      $('overlay-fail').classList.remove('on');
+      $('overlay-done').classList.remove('on');
+    }
+
+    function loadLevel(idx, keepProgram) {
+      state.levelIdx = Math.max(0, Math.min(LEVELS.length - 1, idx));
+      var level = getLevel();
+      state.r = level.start.r;
+      state.c = level.start.c;
+      state.dir = level.start.dir;
+      if (!keepProgram) state.program = [];
+      state.status = 'play';
+      hideOverlays();
+      setRunningUI(false);
+      renderProgram();
+      renderGrid();
+      updatePills();
+      fillTeacherLevels();
+      saveStore();
+    }
+
+    function addCmd(op) {
+      if (state.running) return;
+      if (state.program.length >= MAX_STEPS) {
+        toast('步數已滿');
+        return;
+      }
+      state.program.push(op);
+      sfxTap();
+      renderProgram();
+    }
+
+    function wait(ms) {
+      return new Promise(function (resolve) { setTimeout(resolve, ms); });
+    }
+
+    async function runProgram() {
+      if (state.running) return;
+      if (!state.program.length) {
+        toast('先加入指令');
+        speak('先加入指令');
+        return;
+      }
+      hideOverlays();
+      var level = getLevel();
+      // reset pose
+      state.r = level.start.r;
+      state.c = level.start.c;
+      state.dir = level.start.dir;
+      renderGrid();
+      setRunningUI(true);
+
+      var result = 'miss';
+      for (var i = 0; i < state.program.length; i++) {
+        highlightChip(i);
+        var op = state.program[i];
+        if (op === 'L') {
+          state.dir = (state.dir + 3) % 4;
+          renderGrid('walk');
+          sfxStep();
+          await wait(stepMs());
+        } else if (op === 'R') {
+          state.dir = (state.dir + 1) % 4;
+          renderGrid('walk');
+          sfxStep();
+          await wait(stepMs());
+        } else if (op === 'F') {
+          var d = DIR_DELTA[state.dir];
+          var nr = state.r + d.r, nc = state.c + d.c;
+          if (!inBounds(level, nr, nc) || isWall(level, nr, nc)) {
+            renderGrid('stuck');
+            sfxFail();
+            result = 'fail';
+            await wait(stepMs());
+            break;
+          }
+          state.r = nr;
+          state.c = nc;
+          renderGrid('walk');
+          sfxStep();
+          await wait(stepMs());
+          if (isGoal(level, state.r, state.c)) {
+            result = 'win';
+            // continue? stop early on goal is friendlier for kids
+            break;
+          }
+        }
+      }
+      highlightChip(-1);
+
+      if (result !== 'win' && result !== 'fail') {
+        result = isGoal(level, state.r, state.c) ? 'win' : 'miss';
+      }
+
+      if (result === 'win') {
+        renderGrid('win');
+        sfxWin();
+        var stars = starCount(level, state.program.length);
+        var prev = state.starsEarned[level.id] || 0;
+        if (stars > prev) state.starsEarned[level.id] = stars;
+        saveStore();
+        updatePills();
+        $('win-stars').textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+        $('win-title').textContent = '成功！';
+        $('win-msg').textContent = (CHARS[state.char] || CHARS.ming).win;
+        speak('成功！' + (CHARS[state.char] || CHARS.ming).win);
+        setRunningUI(false);
+        if (state.levelIdx >= LEVELS.length - 1) {
+          $('overlay-done').classList.add('on');
+        } else {
+          $('overlay-win').classList.add('on');
+        }
+        return;
+      }
+
+      setRunningUI(false);
+      if (result === 'fail') {
+        $('fail-msg').textContent = '撞到牆或者出界喇，再試一次';
+        speak('唔緊要，再試一次');
+      } else {
+        $('fail-msg').textContent = '未到旗幟，再試一次';
+        speak('未到旗幟，再試一次');
+        sfxFail();
+      }
+      $('overlay-fail').classList.add('on');
+    }
+
+    /* —— events —— */
+    document.querySelectorAll('.char-card').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.char = btn.getAttribute('data-char') || 'ming';
+        sfxTap();
+        ensureAudio();
+        showScreen('screen-play');
+        loadLevel(state.levelIdx, false);
+        speak('開始探險');
+      });
+    });
+
+    $('btn-f').addEventListener('click', function () { addCmd('F'); });
+    $('btn-l').addEventListener('click', function () { addCmd('L'); });
+    $('btn-r').addEventListener('click', function () { addCmd('R'); });
+    $('btn-go').addEventListener('click', function () { runProgram(); });
+    $('btn-clear').addEventListener('click', function () {
+      if (state.running) return;
+      state.program = [];
+      renderProgram();
+      sfxTap();
+    });
+
+    $('btn-home').addEventListener('click', function () {
+      if (state.running) return;
+      hideOverlays();
+      showScreen('screen-home');
+    });
+    $('btn-win-home').addEventListener('click', function () { showScreen('screen-home'); hideOverlays(); });
+    $('btn-done-home').addEventListener('click', function () { showScreen('screen-home'); hideOverlays(); });
+    $('btn-fail-clear').addEventListener('click', function () {
+      hideOverlays();
+      loadLevel(state.levelIdx, false);
+    });
+    $('btn-retry').addEventListener('click', function () {
+      hideOverlays();
+      loadLevel(state.levelIdx, true);
+    });
+    $('btn-next').addEventListener('click', function () {
+      hideOverlays();
+      loadLevel(state.levelIdx + 1, false);
+      speak(getLevel().coach);
+    });
+    $('btn-again').addEventListener('click', function () {
+      hideOverlays();
+      loadLevel(0, false);
+    });
+
+    $('btn-voice').addEventListener('click', function () {
+      state.voice = !state.voice;
+      syncToggles();
+      saveStore();
+      toast(state.voice ? '語音開' : '語音關');
+    });
+    $('btn-slow').addEventListener('click', function () {
+      state.slow = !state.slow;
+      syncToggles();
+      saveStore();
+      toast(state.slow ? '慢速' : '正常速度');
+    });
+
+    $('btn-teacher').addEventListener('click', function () {
+      $('teacher-panel').classList.toggle('open');
+    });
+    $('t-close').addEventListener('click', function () {
+      $('teacher-panel').classList.remove('open');
+    });
+    $('t-reset').addEventListener('click', function () {
+      loadLevel(state.levelIdx, false);
+    });
+    $('t-level').addEventListener('change', function () {
+      loadLevel(parseInt($('t-level').value, 10) || 0, false);
+    });
+    $('t-voice').addEventListener('change', function () {
+      state.voice = $('t-voice').value === '1';
+      syncToggles(); saveStore();
+    });
+    $('t-sfx').addEventListener('change', function () {
+      state.sfx = $('t-sfx').value === '1';
+      saveStore();
+    });
+    $('t-slow').addEventListener('change', function () {
+      state.slow = $('t-slow').value === '1';
+      syncToggles(); saveStore();
+    });
+
+    // SEN: block context menu
+    document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+    /* —— boot —— */
+    loadStore();
+    syncToggles();
+    fillTeacherLevels();
+
+    // Export for tests
+    window.HkExplorer = {
+      LEVELS: LEVELS,
+      getLevel: getLevel,
+      getState: function () {
+        return {
+          char: state.char, levelIdx: state.levelIdx,
+          r: state.r, c: state.c, dir: state.dir,
+          program: state.program.slice(),
+          voice: state.voice, sfx: state.sfx, slow: state.slow
+        };
+      },
+      setChar: function (c) { state.char = c; },
+      loadLevel: loadLevel,
+      simulate: function (cmds, levelIdx) {
+        var lv = typeof levelIdx === 'number' ? LEVELS[levelIdx] : getLevel();
+        return simulate(lv, { r: lv.start.r, c: lv.start.c, dir: lv.start.dir }, cmds);
+      },
+      starCount: starCount,
+      inBounds: inBounds,
+      isWall: isWall,
+      DIR_DELTA: DIR_DELTA
+    };
+  })();
+  </script>
+</body>
+</html>
